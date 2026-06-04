@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formatar Código</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 2rem;
+            max-width: 2000px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            font-family: monospace;
+            font-size: 14px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            resize: vertical;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        pre {
+            background-color: #282c34;
+            color: #abb2bf;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: monospace;
+            font-size: 18px;
+        }
+
+        .error {
+            color: red;
+        }
+
+        /* Highlighting classes */
+        .token-object {
+            color: lightblue;
+        }
+
+        .token-string {
+            color: brown;
+        }
+
+        .token-number {
+            color: lightgreen;
+        }
+
+        .token-boolean {
+            color: violet;
+        }
+
+        .token-null {
+            color: gray;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Formatar Código</h1>
+	<label for="codeInputFile">escolha seu arquivo:</label>
+	<input type="file" id="codeInputFile">
+	 <br>
+	 Ou
+	 <br>
+    <label for="codeInput"> Cole seu código aqui:</label>
+    <textarea id="codeInput"></textarea>
+    <br><br>
+    <button id="formatButton">Deixar bonito</button>
+
+    <h2>Resultado formatado:</h2>
+    <pre id="formattedOutput"></pre>
+
+    <script>
+        function copyContent(button) {
+            // Aqui você pode acessar o botão clicado usando a referência `button`
+            console.log("Botão clicado:", button);
+            var hiddenInput = button.nextElementSibling;
+            // Obter o valor do input hidden
+            var manifestMal = hiddenInput.value;
+            manifestMal = manifestMal.replace('&quot;video_dash_manifest&quot;: &quot;','');
+            manifestMal = manifestMal.replace("\n","");
+            manifestMal = manifestMal.replace('                                    ','');
+            var textoParaCopiar = unescapeHtml(manifestMal);
+			const uuid = crypto.randomUUID();
+			const nomeArquivo = `arquivo-${uuid}.xml`;
+            
+			const blob = new Blob([textoParaCopiar], { type: 'text/plain' });
+			// Gera uma URL temporária
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = nomeArquivo;
+			document.body.appendChild(a);
+			a.click();
+			// 5. Limpa
+			document.body.removeChild(a);
+			URL.revokeObjectURL(url);
+			
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(textoParaCopiar)
+                    .then(function () {
+                        console.log('Conteúdo copiado para a área de transferência!');
+                    })
+                    .catch(function (err) {
+                        alert('Erro ao copiar: ' + err);
+                    });
+
+            } else {
+                // Fallback para navegadores sem suporte à API Clipboard
+                var textarea = document.createElement('textarea');
+                textarea.value = textoParaCopiar;
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    alert('Conteúdo copiado para a área de transferência!');
+                } catch (err) {
+                    alert('Erro ao copiar: ' + err);
+                }
+                document.body.removeChild(textarea);
+            }
+
+        }
+        // Ajuste na função de escape: removemos a fuga de barras /.
+        function escapeHtml(str) {
+            return str.replace(/[&<>'\"]/g, function (c) {
+                switch (c) {
+                    case '&': return '&amp;';
+                    case '<': return '&lt;';
+                    case '>': return '&gt;';
+                    case '"': return '&quot;';
+                    case "'": return '&#39;';
+                    case "\\": return '&#92;';
+                }
+                return c;
+            });
+        }
+
+        function unescapeHtml(str) {
+            return str.replace(/(?:\\)?&(amp|lt|gt|quot|#39|#92);/g, function (match, entity) {
+                switch (entity) {
+                    case 'amp':
+                        return '&';
+                    case 'lt':
+                        return '<';
+                    case 'gt':
+                        return '>';
+                    case 'quot':
+                        return '"';
+                    case '#39':
+                        return "'";
+                    case '#92':
+                        return '\\';
+                    default:
+                        return match;
+                }
+            });
+        }
+
+        function highlightMatchingLines(codeInputValue) {
+            // Separa o texto em linhas, considerando CRLF ou LF
+            var lines = codeInputValue.split(/\r?\n/);
+            var outputHTML = '';
+
+            // Percorre cada linha do texto
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i];
+
+                if (line.indexOf('&quot;id') > -1) {
+                    // Adiciona a linha ao output, estilizando o texto em rosa
+                    outputHTML += '<div style="background-color: pink;">' + line + '</div><br/>';
+                } else if (line.indexOf('video_dash_manifest') > -1) {
+                    //line = newDecodeHTMLEntities(lines[i]);
+                    var buttonHtml = '';
+                    line = line.replace(/&amp;/g, '&');
+                    //line = line.replace(/&quot;/g, '||');
+
+
+                    var regex = /(<span\s+class=["']token-string["']>)([\s\S]*?)(<\/span>)/g;
+                    var match = line.match(regex);
+                    var hiddenHTML = '';
+                    if (match && match[1]) {
+
+                        var tokenContent = match[1];
+                        if (tokenContent.indexOf('&quot;&lt;?xml version=\\&quot;') > -1) {
+
+                            var lineAUX = line.replace(/<span class="token-string">/g, '');
+                            lineAUX = lineAUX.replace(/<\/span>/g, '');
+                            lineAUX = lineAUX.replace("<span class=\"token-object\">","");
+                            lineAUX = lineAUX.replace('\n', '');
+                            console.log(lineAUX);
+                            console.log(lineAUX);
+                            //var conteudoAserCopiado = '';
+                            var conteudoAserOculto = '';
+                            conteudoAserOculto = escapeHtml(lineAUX)
+                            
+
+                            //console.log(conteudoAserCopiado);
+
+                            // Cria um ID único para o botão (para associarmos o conteúdo a ele)
+                            var buttonId = 'copyButton_' + Math.random().toString(36).substring(2, 10);
+                            buttonHtml = '<button id="' + buttonId + '" class="copy-button" onclick="copyContent(this)" >Copiar conteúdo</button>';
+                            hiddenHTML = '<input type="hidden" name="manifestHidden_' + buttonId + '" value="' + conteudoAserOculto + '">';
+                        }
+                    }
+
+                    outputHTML += '<div style="background-color: pink;">' + buttonHtml + hiddenHTML + line + '</div><br/>';
+                } else {
+                    outputHTML += line + '<br/>';
+                }
+            }
+            // Exibe o resultado no elemento com id "formattedOutput"
+            document.getElementById('formattedOutput').innerHTML = outputHTML;
+        }
+
+        // function syntaxHighlight(json) {
+        //     // 1. Escapar HTML para não quebrar a página
+        //     let safe = escapeHtml(json);
+
+        //     // 2. Destacar chaves, strings, booleans, null e números
+        //     //    Observação: a ordem importa.
+
+        //     // Destaca chaves ("chave": )
+        //     safe = safe.replace(/"([\w\-_$@]+)"(?=\s*:\s)/g,
+        //         '<span class="token-object">"$1"</span>');
+
+        //     // Destaca strings (não capturadas no passo acima)
+        //     safe = safe.replace(/"([^"\n\r]*?)"/g,
+        //         '<span class="token-string">"$1"</span>');
+
+        //     // Destaca true ou false
+        //     safe = safe.replace(/\b(true|false)\b/g,
+        //         '<span class="token-boolean">$1</span>');
+
+        //     // Destaca null
+        //     safe = safe.replace(/\b(null)\b/g,
+        //         '<span class="token-null">$1</span>');
+
+        //     // Destaca números
+        //     safe = safe.replace(/\b(-?\d+(\.\d+)?)\b/g,
+        //         '<span class="token-number">$1</span>');
+
+        //     return safe;
+        // }
+        function syntaxHighlight(json) {
+            let safe = escapeHtml(json);
+
+            // 1. Destacar chaves primeiro
+            safe = safe.replace(/&quot;([\w\-_$@]+)&quot;(?=\s*:\s)/g,
+                '<span class="token-object">&quot;$1&quot;</span>');
+
+            // 2. Destacar URLs com imagens/vídeos e transformar em links
+            // Regex melhorada para capturar URLs completas com query strings
+            safe = safe.replace(
+                /&quot;(https?:\/\/[^"]+\.(jpg|jpeg|png|gif|webp|heic|mp4)(?:[^"]*?))&quot;/gi,
+                function (match, url) {
+                    // Criar o link mantendo a URL original para o href
+                    const rawUrl = url.replace(/&amp;/g, '&');
+                    return `<span class="token-string"><a href="${rawUrl}" target="_blank" style="color: inherit;">&quot;${url}&quot;</a></span>`;
+                }
+            );
+
+            // 3. Destacar strings restantes que não são URLs
+            safe = safe.replace(/&quot;([^"]+?)&quot;/g,
+                '<span class="token-string">&quot;$1&quot;</span>');
+
+            // 4. Destacar booleanos e null
+            safe = safe.replace(/\b(true|false)\b/g, '<span class="token-boolean">$1</span>');
+            safe = safe.replace(/\b(null)\b/g, '<span class="token-null">$1</span>');
+
+            return safe;
+        }
+		
+		// Função para ler o arquivo de forma assíncrona
+		function readFileAsync(file) {
+			return new Promise((resolve, reject) => {
+				const reader = new FileReader();
+				
+				reader.onload = () => {
+					resolve(reader.result);
+				};
+				
+				reader.onerror = () => {
+					reject(new Error('Erro ao ler o arquivo'));
+				};
+				
+				reader.readAsText(file);
+			});
+		}
+		
+		// Função para processar o código (extraída para reutilização)
+		function processCode(code) {
+			// Aplicar as substituições
+			code = code.replace('</scr' + 'ipt>', '');
+			const regex = /<script\s+([^>]*?type\s*=\s*["']application\/json["'][^>]*?data-content-len\s*=\s*["']\d+["'][^>]*?data-sjs[^>]*?)>/gi;
+			code = code.replace(regex, '');
+			code = code.replace('&amp;', '&');
+			
+			const rawCode = code;
+			const output = document.getElementById('formattedOutput');
+
+			try {
+				// Tentar fazer parse do JSON
+				const parsed = JSON.parse(rawCode);
+				// Transformar em texto indentado
+				const pretty = JSON.stringify(parsed, null, 2);
+				// Destacar sintaxe
+				const highlighted = syntaxHighlight(pretty);
+				// Exibir resultado
+				output.innerHTML = highlighted;
+				output.classList.remove('error');
+
+				highlightMatchingLines(highlighted);
+
+			} catch (error) {
+				output.textContent = 'Erro ao formatar código. Verifique se o conteúdo é JSON válido.\n\n' + error;
+				output.classList.add('error');
+			}
+		}
+
+        document.getElementById('formatButton').addEventListener('click', () => {
+			const fileInput = document.getElementById('codeInputFile');
+			const codeInit = document.getElementById('codeInput').value.trim();
+			
+			// Se há texto na textarea
+			if (codeInit) {
+				processCode(codeInit);
+			} 
+			// Se há arquivo selecionado
+			else if (fileInput.files && fileInput.files[0]) {
+				const file = fileInput.files[0];
+				console.log("Lendo arquivo:", file.name);
+				
+				readFileAsync(file)
+					.then(code => {
+						console.log("Conteúdo do arquivo carregado");
+						processCode(code);
+					})
+					.catch(error => {
+						const output = document.getElementById('formattedOutput');
+						output.textContent = 'Erro ao processar arquivo: ' + error.message;
+						output.classList.add('error');
+					});
+			}
+			// Se não há nem texto nem arquivo
+			else {
+				const output = document.getElementById('formattedOutput');
+				output.textContent = 'Por favor, cole o código na área de texto ou selecione um arquivo.';
+				output.classList.add('error');
+			}
+        });
+    </script>
+
+</body>
+
+</html>
