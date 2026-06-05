@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XML Formatter</title>
+    <script src="vkbeautify.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --text-color: #e0e0e0;
+            --card-bg: #2d2d2d;
+            --border-color: #404040;
+            --button-bg: #0066cc;
+            --button-hover: #0052a3;
+            --accent: #00ff88;
+            --error: #ff6b6b;
+            --base-url-color: #CC8400;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: var(--accent);
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #888;
+            font-size: 1.1rem;
+        }
+
+        .upload-section {
+            background: var(--card-bg);
+            border: 2px dashed var(--border-color);
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            border-color: var(--accent);
+            box-shadow: 0 5px 20px rgba(0, 255, 136, 0.1);
+        }
+
+        .file-input {
+            margin-bottom: 20px;
+        }
+
+        .file-input input[type="file"] {
+            display: none;
+        }
+
+        .file-label {
+            display: inline-block;
+            background: var(--button-bg);
+            color: white;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        .file-label:hover {
+            background: var(--button-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 102, 204, 0.3);
+        }
+
+        .format-btn {
+            background: linear-gradient(135deg, var(--accent), #00cc70);
+            color: var(--bg-color);
+            border: none;
+            padding: 15px 40px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .format-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 255, 136, 0.4);
+        }
+
+        .format-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .result-section {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .result-title {
+            color: var(--accent);
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .copy-btn {
+            background: var(--border-color);
+            color: var(--text-color);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .copy-btn:hover {
+            background: var(--button-bg);
+            color: white;
+        }
+
+        .xml-output {
+            background: #1a1a1a;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            max-height: 500px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        /* Estilo específico para destaque de BaseURL */
+        .base-url-highlight {
+            color: var(--base-url-color) !important;
+            font-weight: bold !important;
+            background: rgba(204, 132, 0, 0.15) !important;
+            padding: 2px 4px !important;
+            border-radius: 3px !important;
+            border: 1px solid rgba(204, 132, 0, 0.4) !important;
+        }
+
+        .xml-output::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .xml-output::-webkit-scrollbar-track {
+            background: var(--card-bg);
+            border-radius: 4px;
+        }
+
+        .xml-output::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        .xml-output::-webkit-scrollbar-thumb:hover {
+            background: var(--accent);
+        }
+
+        .file-info {
+            color: #888;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+
+        .error {
+            color: var(--error);
+            background: rgba(255, 107, 107, 0.1);
+            border: 1px solid var(--error);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .success {
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .method-selector {
+            margin-bottom: 20px;
+        }
+
+        .method-selector label {
+            margin-right: 20px;
+            cursor: pointer;
+        }
+
+        .method-selector input[type="radio"] {
+            margin-right: 5px;
+        }
+
+        .feature-info {
+            background: rgba(204, 132, 0, 0.1);
+            border: 1px solid rgba(204, 132, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 0.9rem;
+        }
+
+        .feature-info strong {
+            color: var(--base-url-color);
+        }
+		
+		.quality-highlight {
+			color: #ff0000 !important;
+			font-weight: bold !important;
+			background: rgba(255, 0, 0, 0.1) !important;
+			padding: 2px 4px !important;
+			border-radius: 3px !important;
+			border: 1px solid rgba(255, 0, 0, 0.3) !important;
+		}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 XML Formatter</h1>
+            <p>Formate e visualize arquivos XML com estilo</p>
+        </div>
+
+        <div class="upload-section">
+            <div class="file-input">
+                <label for="xmlFile" class="file-label">
+                    📁 Escolher arquivo XML
+                </label>
+                <input type="file" id="xmlFile" accept=".xml,text/xml,application/xml">
+            </div>
+
+            <div class="method-selector">
+                <label>
+                    <input type="radio" name="formatMethod" value="vkbeautify" checked>
+                    vkBeautify (Biblioteca)
+                </label>
+                <label>
+                    <input type="radio" name="formatMethod" value="native">
+                    Implementação Nativa
+                </label>
+                <label>
+                    <input type="radio" name="formatMethod" value="custom">
+                    Formatação Customizada
+                </label>
+            </div>
+
+            <button class="format-btn" id="formatBtn" disabled>
+                ✨ Formatar XML
+            </button>
+
+            <div class="file-info" id="fileInfo"></div>
+
+            <div class="feature-info">
+                <strong>🎯 Funcionalidade Especial:</strong> Tags <strong>&lt;BaseURL&gt;</strong> serão destacadas automaticamente em <strong style="color: #CC8400;">amarelo queimado</strong> para facilitar a identificação!
+            </div>
+        </div>
+
+        <div class="result-section" id="resultSection">
+            <div class="result-header">
+                <h3 class="result-title">📄 XML Formatado</h3>
+                <button class="copy-btn" id="copyBtn">📋 Copiar</button>
+            </div>
+            <div class="xml-output" id="xmlOutput"></div>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('xmlFile');
+        const formatBtn = document.getElementById('formatBtn');
+        const resultSection = document.getElementById('resultSection');
+        const xmlOutput = document.getElementById('xmlOutput');
+        const fileInfo = document.getElementById('fileInfo');
+        const copyBtn = document.getElementById('copyBtn');
+
+        let xmlContent = '';
+
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    xmlContent = e.target.result;
+                    formatBtn.disabled = false;
+                    fileInfo.innerHTML = `<span class="success">✅ Arquivo carregado: ${file.name} (${(file.size / 1024).toFixed(2)} KB)</span>`;
+                };
+                reader.onerror = function() {
+                    fileInfo.innerHTML = '<div class="error">❌ Erro ao ler o arquivo</div>';
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        formatBtn.addEventListener('click', function() {
+            if (!xmlContent) return;
+
+            const selectedMethod = document.querySelector('input[name="formatMethod"]:checked').value;
+            let formattedXml = '';
+
+            try {
+                switch (selectedMethod) {
+                    case 'vkbeautify':
+                        formattedXml = vkbeautify.xml(xmlContent);
+                        formattedXml = escapeAndHighlightXml(formattedXml);
+                        break;
+                    case 'native':
+                        formattedXml = formatXmlNative(xmlContent);
+                        formattedXml = escapeAndHighlightXml(formattedXml);
+                        break;
+                    case 'custom':
+                        formattedXml = formatXmlCustom(xmlContent);
+                        break;
+                }
+
+                xmlOutput.innerHTML = formattedXml;
+                resultSection.style.display = 'block';
+                resultSection.scrollIntoView({ behavior: 'smooth' });
+
+            } catch (error) {
+                xmlOutput.innerHTML = `<div class="error">❌ Erro ao formatar XML: ${error.message}</div>`;
+                resultSection.style.display = 'block';
+            }
+        });
+
+        copyBtn.addEventListener('click', function() {
+            // Remove HTML tags para copiar apenas o texto limpo
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = xmlOutput.innerHTML;
+            const text = tempDiv.textContent || tempDiv.innerText || '';
+            
+            navigator.clipboard.writeText(text).then(() => {
+                copyBtn.textContent = '✅ Copiado!';
+                setTimeout(() => {
+                    copyBtn.textContent = '📋 Copiar';
+                }, 2000);
+            }).catch(() => {
+                // Fallback para navegadores mais antigos
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                copyBtn.textContent = '✅ Copiado!';
+                setTimeout(() => {
+                    copyBtn.textContent = '📋 Copiar';
+                }, 2000);
+            });
+        });
+
+        // FUNÇÃO CORRIGIDA: Escapa HTML e depois aplica destaque para BaseURL
+        function escapeAndHighlightXml(xml) {
+            // 1. Primeiro, escapa todos os caracteres HTML
+            let escapedXml = xml
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+
+            // 2. Adicionar NOVO realce para QualityClass e QualityLabel
+			escapedXml = escapedXml.replace(
+				/(FBQualityClass|FBQualityLabel)=&quot;(hd|sd|1080p|960p|720p|540p|360p)&quot;/g,
+				'$1=&quot;<span class="quality-highlight">$2</span>&quot;'
+			);
+			// 2. Depois, aplica o destaque para BaseURL
+            if (escapedXml.includes('&lt;BaseURL&gt;') && escapedXml.includes('&lt;/BaseURL&gt;')) {
+                escapedXml = escapedXml.replace(
+                    /(&lt;BaseURL&gt;)([\s\S]*?)(&lt;\/BaseURL&gt;)/g, 
+                    (match, openTag, content, closeTag) => {
+                        const trimmedContent = content.trim();
+                        if (trimmedContent) {
+                            return `${openTag}<span class="base-url-highlight"><a href="${trimmedContent}">${trimmedContent}</a></span>${closeTag}`;
+                        }
+                        return match;
+                    }
+                );
+            }
+
+            return escapedXml;
+        }
+
+        // Implementação nativa usando DOMParser
+        function formatXmlNative(xml) {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xml, 'text/xml');
+            
+            if (xmlDoc.getElementsByTagName('parsererror').length > 0) {
+                throw new Error('XML inválido');
+            }
+
+            const serializer = new XMLSerializer();
+            const xmlString = serializer.serializeToString(xmlDoc);
+            
+            return formatXmlString(xmlString);
+        }
+
+        // Formatação customizada + destaque BaseURL
+        function formatXmlCustom(xml) {
+            let formatted = xml
+                // Remove quebras de linha desnecessárias
+                .replace(/>\s*\n\s*</g, '><')
+                // Adiciona quebra após tags de fechamento
+                .replace(/<\/([^>]+)>/g, '</$1>\n')
+                // Adiciona quebra após tags auto-fechantes
+                .replace(/\/>/g, '/>\n')
+                // Adiciona quebra após tags de abertura (mas não para tags inline pequenas)
+                .replace(/(<[^\/][^>]*[^\/]>)([^<\n])/g, '$1\n$2')
+                // Preserva quebras de linha existentes
+                .replace(/\\n/g, '\n')
+                // Remove linhas vazias extras
+                .replace(/\n\s*\n/g, '\n')
+                // Adiciona indentação
+                .split('\n')
+                .map((line, index, lines) => {
+                    const trimmed = line.trim();
+                    if (!trimmed) return '';
+                    
+                    let indent = 0;
+                    for (let i = 0; i < index; i++) {
+                        const prevLine = lines[i].trim();
+                        if (prevLine.match(/<[^\/][^>]*[^\/]>$/)) {
+                            indent++;
+                        }
+                        if (prevLine.match(/<\/[^>]+>$/)) {
+                            indent--;
+                        }
+                    }
+                    
+                    if (trimmed.match(/^<\/[^>]+>$/)) {
+                        indent--;
+                    }
+                    
+                    return '  '.repeat(Math.max(0, indent)) + trimmed;
+                })
+                .filter(line => line.trim())
+                .join('\n');
+
+            // APLICA ESCAPE E DESTAQUE
+            return escapeAndHighlightXml(formatted);
+        }
+
+        // Função auxiliar para formatação básica
+        function formatXmlString(xml) {
+            let formatted = '';
+            let indent = 0;
+            const tab = '  ';
+            
+            xml.split(/>\s*</).forEach((node, index) => {
+                if (index > 0) {
+                    node = '<' + node;
+                }
+                if (index < xml.split(/>\s*</).length - 1) {
+                    node = node + '>';
+                }
+                
+                if (node.match(/^<\/\w/)) {
+                    indent--;
+                }
+                
+                formatted += tab.repeat(indent) + node + '\n';
+                
+                if (node.match(/^<\w[^>]*[^\/]>.*$/)) {
+                    indent++;
+                }
+            });
+            
+            return formatted.slice(0, -1);
+        }
+    </script>
+</body>
+</html>
