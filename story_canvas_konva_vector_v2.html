@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Story Konva Vector v2 — Sequência PNG Alpha (.ZIP)</title>
+    <meta name="description" content="Exportador de sequência PNG com transparência Alpha em ZIP. Konva.js + GSAP + JSZip + FileSaver.js — Canvas-First Engine, sem erros de DOM.">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Courier+Prime:ital,wght@0,700;1,700&family=Inter:wght@700;800;900&family=Montserrat:wght@800;900&family=Playfair+Display:ital,wght@0,700;1,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Roboto+Condensed:wght@700&display=swap" rel="stylesheet">
+
+    <!-- GSAP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+    <!-- Konva.js -->
+    <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+
+    <!-- JSZip -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <!-- FileSaver.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <style>
+        :root {
+            --accent:    #6366f1;
+            --accent-2:  #10b981;
+            --accent-3:  #f59e0b;
+            --surface:   #0f0f13;
+            --surface-2: #18181f;
+            --surface-3: #22222c;
+            --border:    #2a2a38;
+            --text-primary: #f1f1f5;
+            --text-muted:   #71717a;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--surface);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Checkerboard: transparency indicator */
+        .checkerboard {
+            background-color: #0d0d10;
+            background-image:
+                linear-gradient(45deg, #1a1a22 25%, transparent 25%),
+                linear-gradient(-45deg, #1a1a22 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #1a1a22 75%),
+                linear-gradient(-45deg, transparent 75%, #1a1a22 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+
+        /* Glass morphism card */
+        .glass {
+            background: rgba(24, 24, 31, 0.82);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+        }
+
+        /* Gradient text */
+        .grad-text {
+            background: linear-gradient(135deg, #818cf8 0%, #34d399 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Konva wrapper — CSS-scaled, origin top-left */
+        #konva-wrap {
+            transform-origin: top left;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* Control elements */
+        .ctrl-input {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 6px 12px;
+            font-size: 12px;
+            color: var(--text-primary);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            outline: none;
+            transition: border-color .2s;
+        }
+        .ctrl-input:focus { border-color: var(--accent); }
+
+        .ctrl-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        /* Range slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 4px;
+            border-radius: 99px;
+            background: var(--border);
+            outline: none;
+            cursor: pointer;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            box-shadow: 0 0 0 3px rgba(99,102,241,.3);
+        }
+
+        /* Color picker row */
+        .color-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 5px 10px;
+            transition: border-color .2s;
+        }
+        .color-wrap:focus-within { border-color: var(--accent); }
+        input[type=color] {
+            width: 22px;
+            height: 22px;
+            border: none;
+            background: none;
+            padding: 0;
+            cursor: pointer;
+            border-radius: 4px;
+            outline: none;
+        }
+
+        /* Buttons */
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 700;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            cursor: pointer;
+            border: none;
+            transition: all .2s;
+            width: 100%;
+        }
+        .btn:active:not(:disabled) { transform: scale(.97); }
+        .btn-secondary {
+            background: var(--surface-3);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover { background: #2d2d3a; border-color: #3f3f55; }
+        .btn-export {
+            background: linear-gradient(135deg, #7c3aed, #059669);
+            color: #fff;
+            box-shadow: 0 8px 24px -6px rgba(124,58,237,.45);
+        }
+        .btn-export:hover:not(:disabled) {
+            opacity: .9;
+            box-shadow: 0 12px 32px -6px rgba(124,58,237,.6);
+        }
+        .btn-export:disabled { opacity: .45; cursor: not-allowed; }
+
+        /* Export overlay */
+        #export-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(9,9,12,.92);
+            backdrop-filter: blur(12px);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            z-index: 100;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            border: 3px solid rgba(124,58,237,.15);
+            border-top-color: #7c3aed;
+            animation: spin .8s linear infinite;
+        }
+
+        /* Dual progress bars */
+        .progress-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 280px;
+        }
+        .progress-row {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .progress-label-title { color: #a1a1aa; font-weight: 600; }
+        .progress-label-pct   { color: #d4d4d8; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .progress-track {
+            width: 100%;
+            height: 5px;
+            background: rgba(255,255,255,.07);
+            border-radius: 99px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 99px;
+            transition: width .1s linear;
+        }
+        #bar-frames { background: linear-gradient(90deg, var(--accent), #818cf8); }
+        #bar-zip    { background: linear-gradient(90deg, #7c3aed, var(--accent-2)); }
+
+        /* Status badge */
+        .sbadge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 10px;
+            border-radius: 99px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .s-idle    { background: rgba(113,113,122,.1); color: #a1a1aa; border: 1px solid rgba(113,113,122,.2); }
+        .s-playing { background: rgba(245,158,11,.1);  color: #fbbf24; border: 1px solid rgba(245,158,11,.2); }
+        .s-exp     { background: rgba(124,58,237,.12); color: #c4b5fd; border: 1px solid rgba(124,58,237,.25); }
+        .s-zip     { background: rgba(16,185,129,.1);  color: #34d399; border: 1px solid rgba(16,185,129,.2); }
+        .s-done    { background: rgba(16,185,129,.15); color: #34d399; border: 1px solid rgba(16,185,129,.3); }
+
+        /* Pulse dot */
+        @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.3} }
+        .pulse { animation: pulse-dot 1.5s ease-in-out infinite; }
+
+        /* PNG badge indicator (new!) */
+        .png-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            font-family: 'Plus Jakarta Sans', monospace;
+            background: rgba(124,58,237,.15);
+            color: #c4b5fd;
+            border: 1px solid rgba(124,58,237,.3);
+            letter-spacing: .04em;
+        }
+
+        hr.divider { border: none; border-top: 1px solid var(--border); }
+    </style>
+</head>
+<body class="flex flex-col items-center min-h-screen p-3 sm:p-5 gap-4">
+
+    <!-- ══ Header ══════════════════════════════════════════════════ -->
+    <header class="w-full max-w-6xl flex items-center justify-between pt-1">
+        <div class="flex items-center gap-3">
+            <a href="story_text_badges_gsap_animation1.html"
+               class="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-indigo-400 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+                Painel Principal
+            </a>
+            <span class="w-px h-4 bg-zinc-800 inline-block"></span>
+            <span class="text-xs sm:text-sm font-bold text-zinc-200 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-violet-400 pulse inline-block"></span>
+                <span class="grad-text">Konva Vector Engine</span>
+                <span class="hidden sm:inline text-zinc-500 font-normal text-xs">v2 —</span>
+                <span class="png-badge hidden sm:inline-flex">PNG ZIP Alpha</span>
+            </span>
+        </div>
+        <div class="flex items-center gap-2">
+            <span id="dim-badge" class="px-3 py-1 rounded-lg glass text-xs font-mono text-zinc-400">1920 × 1080</span>
+            <span id="status-badge" class="sbadge s-idle">
+                <span id="s-dot" class="w-1.5 h-1.5 rounded-full bg-zinc-500 inline-block"></span>
+                <span id="s-label">Pronto</span>
+            </span>
+        </div>
+    </header>
+
+    <!-- ══ Preview ═════════════════════════════════════════════════ -->
+    <main class="w-full max-w-6xl flex-1 flex flex-col items-center justify-center">
+        <div id="preview-viewport"
+             class="relative w-full rounded-2xl overflow-hidden checkerboard border border-zinc-800/60 shadow-2xl"
+             style="aspect-ratio:16/9; max-height:62vh;">
+
+            <!-- Konva canvas host (CSS-scaled) -->
+            <div id="konva-wrap">
+                <div id="konva-container"></div>
+            </div>
+
+            <!-- Export overlay with dual progress bars -->
+            <div id="export-overlay">
+                <div class="spinner"></div>
+                <div class="text-center space-y-1">
+                    <h3 id="overlay-title" class="text-sm font-bold text-zinc-100">Renderizando Frames PNG…</h3>
+                    <p id="overlay-sub" class="text-[11px] text-zinc-500 font-mono">Aguarde — não feche esta janela</p>
+                </div>
+                <div class="progress-group">
+                    <!-- Phase 1: frame capture -->
+                    <div class="progress-row">
+                        <div class="progress-label">
+                            <span class="progress-label-title">
+                                <span id="phase1-icon">⬜</span>
+                                Fase 1 — Capturando Frames PNG
+                            </span>
+                            <span class="progress-label-pct" id="pct-frames">0%</span>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-fill" id="bar-frames"></div>
+                        </div>
+                        <p class="text-[10px] text-zinc-600 font-mono mt-0.5" id="status-frames">Frame 0 / 0</p>
+                    </div>
+                    <!-- Phase 2: ZIP compression -->
+                    <div class="progress-row">
+                        <div class="progress-label">
+                            <span class="progress-label-title">
+                                <span id="phase2-icon">⬜</span>
+                                Fase 2 — Comprimindo ZIP
+                            </span>
+                            <span class="progress-label-pct" id="pct-zip">0%</span>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-fill" id="bar-zip"></div>
+                        </div>
+                        <p class="text-[10px] text-zinc-600 font-mono mt-0.5" id="status-zip">Aguardando fase 1…</p>
+                    </div>
+                </div>
+                <p class="text-[11px] text-zinc-600 font-mono">Alpha Channel Real · PNG 32-bit · JSZip</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- ══ Control Panel ═══════════════════════════════════════════ -->
+    <section class="w-full max-w-6xl pb-4">
+        <div class="glass rounded-2xl p-5 shadow-2xl flex flex-col gap-4">
+
+            <!-- Panel header -->
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                         style="background:linear-gradient(135deg,#7c3aed,#059669)">
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-zinc-100">Exportador de Sequência PNG com Alpha Real</p>
+                        <p class="text-[11px] text-zinc-500">Konva.js + GSAP + JSZip + FileSaver.js · frame_0000.png → .ZIP</p>
+                    </div>
+                </div>
+                <div class="hidden sm:flex items-center gap-2 text-[11px] text-zinc-600 font-semibold">
+                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 inline-block"></span>GSAP
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block ml-1"></span>Konva
+                    <span class="w-1.5 h-1.5 rounded-full bg-violet-500 inline-block ml-1"></span>JSZip
+                </div>
+            </div>
+
+            <hr class="divider">
+
+            <!-- Text inputs: 4 lines -->
+            <div>
+                <p class="ctrl-label mb-2">Textos das Caixas</p>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div>
+                        <label class="ctrl-label" for="inp-line1">Caixa 1</label>
+                        <input id="inp-line1" type="text" class="ctrl-input" placeholder="da o like">
+                    </div>
+                    <div>
+                        <label class="ctrl-label" for="inp-line2">Caixa 2</label>
+                        <input id="inp-line2" type="text" class="ctrl-input" placeholder="se inscreva…">
+                    </div>
+                    <div>
+                        <label class="ctrl-label" for="inp-line3">Caixa 3 (opcional)</label>
+                        <input id="inp-line3" type="text" class="ctrl-input" placeholder="deixa um comentário">
+                    </div>
+                    <div>
+                        <label class="ctrl-label" for="inp-line4">Caixa 4 (opcional)</label>
+                        <input id="inp-line4" type="text" class="ctrl-input" placeholder="compartilha!">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Config row -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div>
+                    <label class="ctrl-label" for="sel-res">Resolução</label>
+                    <select id="sel-res" class="ctrl-input cursor-pointer">
+                        <option value="1920x1080" selected>1920 × 1080 (16:9)</option>
+                        <option value="1080x1920">1080 × 1920 (9:16 Story)</option>
+                        <option value="1080x1080">1080 × 1080 (1:1)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="ctrl-label" for="sel-fps">Framerate</label>
+                    <select id="sel-fps" class="ctrl-input cursor-pointer">
+                        <option value="30">30 FPS</option>
+                        <option value="60" selected>60 FPS</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="ctrl-label" for="sel-font">Estilo da Fonte</label>
+                    <select id="sel-font" class="ctrl-input cursor-pointer">
+                        <option value="Inter|800|sans-serif">Inter (Clássica)</option>
+                        <option value="Montserrat|900|sans-serif">Montserrat (Moderna)</option>
+                        <option value="Playfair Display|700|serif">Playfair Display</option>
+                        <option value="Courier Prime|700|monospace">Courier Prime</option>
+                        <option value="Caveat|700|cursive">Caveat (Cursiva)</option>
+                        <option value="Roboto Condensed|700|sans-serif">Roboto Condensed</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="ctrl-label" for="inp-delay">Pausa Central (seg.)</label>
+                    <input id="inp-delay" type="number" class="ctrl-input" min="0.5" max="30" step="0.5" value="3">
+                </div>
+            </div>
+
+            <!-- Colors + font size -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
+                <div>
+                    <label class="ctrl-label" for="pick-badge">Cor das Caixas</label>
+                    <div class="color-wrap">
+                        <input type="color" id="pick-badge" value="#000000">
+                        <span id="val-badge" class="text-[11px] font-mono text-zinc-500 uppercase">#000000</span>
+                    </div>
+                </div>
+                <div>
+                    <label class="ctrl-label" for="pick-text">Cor do Texto</label>
+                    <div class="color-wrap">
+                        <input type="color" id="pick-text" value="#ffffff">
+                        <span id="val-text" class="text-[11px] font-mono text-zinc-500 uppercase">#FFFFFF</span>
+                    </div>
+                </div>
+                <div class="col-span-2">
+                    <label class="ctrl-label" for="slider-fontsize">
+                        Tamanho da Fonte —
+                        <span id="font-size-label" class="text-violet-400">5.0</span>% da Altura
+                    </label>
+                    <input type="range" id="slider-fontsize" min="2" max="12" step="0.5" value="5">
+                </div>
+            </div>
+
+            <!-- Info note about PNG ZIP -->
+            <div class="flex items-start gap-2.5 bg-violet-950/30 border border-violet-800/30 rounded-xl p-3">
+                <svg class="w-4 h-4 text-violet-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <div>
+                    <p class="text-[11px] font-semibold text-violet-300 mb-0.5">Sequência PNG com Alpha Real (32-bit)</p>
+                    <p class="text-[11px] text-zinc-500 leading-relaxed">
+                        Os frames são capturados diretamente do canvas Konva (sem DOM) e salvos como PNG com canal alpha verdadeiro.
+                        Compatível com After Effects, DaVinci Resolve, Premiere Pro e qualquer editor que suporte sequência de imagens.
+                    </p>
+                </div>
+            </div>
+
+            <hr class="divider">
+
+            <!-- Action buttons -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button id="btn-preview" class="btn btn-secondary">
+                    <svg class="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Testar Animação (Preview)
+                </button>
+                <button id="btn-export" class="btn btn-export">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                    </svg>
+                    Baixar Sequência PNG (.ZIP — Alpha Real)
+                </button>
+            </div>
+
+        </div>
+    </section>
+
+<!-- ════════════════════════════════════════════════════════════════
+     JavaScript — Canvas-First Engine (v2)
+     Konva.js → GSAP timeline → JSZip PNG sequence → FileSaver.js
+     Zero DOM-to-Canvas conversion. Zero Tainted Canvas risk.
+════════════════════════════════════════════════════════════════ -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+    /* ── 0. DOM references ─────────────────────────────────────── */
+    var inpLines    = [1,2,3,4].map(function(i) { return document.getElementById('inp-line' + i); });
+    var inpDelay    = document.getElementById('inp-delay');
+    var selRes      = document.getElementById('sel-res');
+    var selFps      = document.getElementById('sel-fps');
+    var selFont     = document.getElementById('sel-font');
+    var pickBadge   = document.getElementById('pick-badge');
+    var valBadge    = document.getElementById('val-badge');
+    var pickText    = document.getElementById('pick-text');
+    var valText     = document.getElementById('val-text');
+    var sliderSize  = document.getElementById('slider-fontsize');
+    var labelSize   = document.getElementById('font-size-label');
+    var btnPreview  = document.getElementById('btn-preview');
+    var btnExport   = document.getElementById('btn-export');
+    var viewport    = document.getElementById('preview-viewport');
+    var konvaWrap   = document.getElementById('konva-wrap');
+    var dimBadge    = document.getElementById('dim-badge');
+    var sBadge      = document.getElementById('status-badge');
+    var sDot        = document.getElementById('s-dot');
+    var sLabel      = document.getElementById('s-label');
+    var expOverlay  = document.getElementById('export-overlay');
+    var oTitle      = document.getElementById('overlay-title');
+    var oSub        = document.getElementById('overlay-sub');
+
+    // Dual progress bar elements
+    var phase1Icon  = document.getElementById('phase1-icon');
+    var pctFrames   = document.getElementById('pct-frames');
+    var barFrames   = document.getElementById('bar-frames');
+    var statusFrames = document.getElementById('status-frames');
+    var phase2Icon  = document.getElementById('phase2-icon');
+    var pctZip      = document.getElementById('pct-zip');
+    var barZip      = document.getElementById('bar-zip');
+    var statusZip   = document.getElementById('status-zip');
+
+    /* ── 1. URL params ─────────────────────────────────────────── */
+    var params = new URLSearchParams(window.location.search);
+    inpLines[0].value = params.get('line1') !== null ? params.get('line1') : 'da o like';
+    inpLines[1].value = params.get('line2') !== null ? params.get('line2') : 'se inscreva, curta e compartilhe';
+    inpLines[2].value = params.get('line3') || '';
+    inpLines[3].value = params.get('line4') || '';
+    inpDelay.value    = params.get('delay') || '3';
+    pickBadge.value   = params.get('badgeColor') || '#000000';
+    pickText.value    = params.get('textColor')  || '#ffffff';
+    if (params.get('fontSize'))   sliderSize.value = params.get('fontSize');
+    if (params.get('resolution')) selRes.value = params.get('resolution');
+    if (params.get('fps'))        selFps.value = params.get('fps');
+    if (params.get('fontClass')) {
+        var legacyMap = {
+            'font-classic'    : 'Inter|800|sans-serif',
+            'font-modern'     : 'Montserrat|900|sans-serif',
+            'font-serif'      : 'Playfair Display|700|serif',
+            'font-typewriter' : 'Courier Prime|700|monospace',
+            'font-neon'       : 'Caveat|700|cursive',
+            'font-condensed'  : 'Roboto Condensed|700|sans-serif'
+        };
+        if (legacyMap[params.get('fontClass')]) selFont.value = legacyMap[params.get('fontClass')];
+    }
+    valBadge.textContent  = pickBadge.value.toUpperCase();
+    valText.textContent   = pickText.value.toUpperCase();
+    labelSize.textContent = parseFloat(sliderSize.value).toFixed(1);
+
+    /* ── 2. Konva stage (transparent layer — alpha preserved) ──── */
+    function getRes() {
+        var parts = selRes.value.split('x').map(Number);
+        return { w: parts[0], h: parts[1] };
+    }
+
+    var res = getRes();
+
+    var stage = new Konva.Stage({
+        container: 'konva-container',
+        width:  res.w,
+        height: res.h
+    });
+
+    var layer = new Konva.Layer(); // No fill = transparent background = true alpha
+    stage.add(layer);
+
+    /* ── 3. Preview scaling via CSS transform ──────────────────── */
+    function scalePreview() {
+        res = getRes();
+        stage.width(res.w);
+        stage.height(res.h);
+
+        var vW    = viewport.clientWidth;
+        var vH    = viewport.clientHeight;
+        var scale = Math.min(vW / res.w, vH / res.h, 1);
+
+        konvaWrap.style.width     = res.w + 'px';
+        konvaWrap.style.height    = res.h + 'px';
+        konvaWrap.style.transform = 'scale(' + scale + ')';
+        konvaWrap.style.left      = ((vW - res.w * scale) / 2) + 'px';
+        konvaWrap.style.top       = ((vH - res.h * scale) / 2) + 'px';
+
+        dimBadge.textContent = res.w + ' \u00d7 ' + res.h;
+    }
+
+    window.addEventListener('resize', scalePreview);
+
+    /* ── 4. Hidden canvas for accurate measureText (no taint) ──── */
+    var mCanvas    = document.createElement('canvas');
+    mCanvas.width  = 4;
+    mCanvas.height = 4;
+    var mCtx = mCanvas.getContext('2d');
+
+    function charWidth(ch, fontStr) {
+        mCtx.font = fontStr;
+        if (ch === ' ') return mCtx.measureText('m').width * 0.55; // natural space ≈ 55% of 'm'
+        return mCtx.measureText(ch).width;
+    }
+
+    /* ── 5. Scene builder — returns { badgeGroups, letterNodes } ── */
+    function buildScene() {
+        layer.destroyChildren();
+
+        var r       = getRes();
+        var cW      = r.w, cH = r.h;
+        var fontPct = parseFloat(sliderSize.value) / 100;
+        var fontSize   = Math.round(cH * fontPct);
+        var badgeClr   = pickBadge.value;
+        var textClr    = pickText.value;
+
+        var fontParts  = selFont.value.split('|');
+        var fontName   = fontParts[0];
+        var fontWeight = fontParts[1];
+        var fontFamily = fontParts[2];
+        var fontStr    = fontWeight + ' ' + fontSize + 'px "' + fontName + '", ' + fontFamily;
+
+        var padX   = fontSize * 0.75;
+        var padY   = fontSize * 0.38;
+        var gapV   = fontSize * 0.4;
+        var radius = fontSize * 0.38;
+        var shadow = {
+            shadowColor:   'rgba(0,0,0,0.5)',
+            shadowBlur:    fontSize * 0.7,
+            shadowOffsetY: fontSize * 0.2,
+            shadowForStrokeEnabled: false
+        };
+
+        var lines = inpLines.map(function(el) { return el.value.trim(); }).filter(Boolean);
+        if (lines.length === 0) {
+            layer.batchDraw();
+            return { badgeGroups: [], letterNodes: [] };
+        }
+
+        // Pre-measure characters
+        var lineData = lines.map(function(text) {
+            var chars  = Array.from(text);
+            var widths = chars.map(function(ch) { return charWidth(ch, fontStr); });
+            var totalW = widths.reduce(function(a, b) { return a + b; }, 0);
+            return { text: text, chars: chars, widths: widths, totalW: totalW };
+        });
+
+        var badgeH      = fontSize + padY * 2;
+        var totalBlockH = lines.length * badgeH + (lines.length - 1) * gapV;
+        var startY0     = (cH - totalBlockH) / 2;
+
+        var badgeGroups = [];
+        var letterNodes = [];
+
+        lineData.forEach(function(d, idx) {
+            var bW = d.totalW + padX * 2;
+            var bX = (cW - bW) / 2;
+            var bY = startY0 + idx * (badgeH + gapV);
+
+            var group = new Konva.Group({ x: bX, y: bY, opacity: 0 });
+
+            var rect = new Konva.Rect(Object.assign({
+                x: 0, y: 0,
+                width: bW, height: badgeH,
+                fill: badgeClr,
+                cornerRadius: radius
+            }, shadow));
+            group.add(rect);
+
+            var curX = padX;
+            d.chars.forEach(function(ch, ci) {
+                var cw = d.widths[ci];
+                if (ch !== ' ') {
+                    var node = new Konva.Text({
+                        x: curX,
+                        y: padY,
+                        text: ch,
+                        fontFamily: '"' + fontName + '", ' + fontFamily,
+                        fontStyle:  fontWeight,
+                        fontSize:   fontSize,
+                        fill:       textClr,
+                        opacity:    0,
+                        listening:  false
+                    });
+                    group.add(node);
+                    letterNodes.push(node);
+                }
+                curX += cw;
+            });
+
+            layer.add(group);
+            badgeGroups.push(group);
+        });
+
+        layer.batchDraw();
+        return { badgeGroups: badgeGroups, letterNodes: letterNodes };
+    }
+
+    /* ── 6. GSAP timeline builder ──────────────────────────────── */
+    var currentTL = null;
+
+    function buildTL(badgeGroups, letterNodes, forExport) {
+        var delaySec = Math.max(0.5, parseFloat(inpDelay.value) || 3);
+        if (currentTL && !forExport) currentTL.kill();
+
+        var tl = gsap.timeline({
+            onUpdate:   function() { layer.batchDraw(); },
+            paused:     true,
+            onStart:    forExport ? undefined : function() { setStatus('playing', 'Animando\u2026'); },
+            onComplete: forExport ? undefined : function() { setStatus('idle', 'Pronto'); }
+        });
+
+        var groupInitY = badgeGroups.map(function(g) { return g.y(); });
+        var nodeInitY  = letterNodes.map(function(n) { return n.y(); });
+
+        // ETAPA 1 — Entrada das caixas
+        tl.fromTo(badgeGroups,
+            { opacity: 0, scaleX: 0.88, scaleY: 0.88, y: function(i) { return groupInitY[i] + 38; } },
+            { opacity: 1, scaleX: 1, scaleY: 1, y: function(i) { return groupInitY[i]; },
+              duration: 0.6, stagger: 0.15, ease: 'back.out(1.4)' }
+        );
+
+        // ETAPA 2 — Entrada letra por letra
+        tl.fromTo(letterNodes,
+            { opacity: 0, scaleX: 0.65, scaleY: 0.65, y: function(i) { return nodeInitY[i] + 22; } },
+            { opacity: 1, scaleX: 1, scaleY: 1, y: function(i) { return nodeInitY[i]; },
+              duration: 0.45, stagger: 0.025, ease: 'power3.out' },
+            '-=0.35'
+        );
+
+        if (forExport) {
+            // Static hold (no GSAP pause breakpoint — exportTL.seek() must be unobstructed)
+            tl.to({}, { duration: delaySec });
+        } else {
+            tl.addPause('+=' + delaySec);
+        }
+
+        // ETAPA 3 — Saída letra por letra
+        tl.to(letterNodes, {
+            opacity: 0, scaleX: 0.72, scaleY: 0.72,
+            y: function(i) { return nodeInitY[i] - 26; },
+            duration: 0.4, stagger: 0.02, ease: 'power2.in'
+        }, '+=' + (forExport ? 0 : delaySec));
+
+        // ETAPA 4 — Saída das caixas
+        tl.to(badgeGroups, {
+            opacity: 0, scaleX: 0.9, scaleY: 0.9,
+            y: function(i) { return groupInitY[i] - 18; },
+            duration: 0.5, stagger: 0.1, ease: 'power2.in'
+        }, '<0.1');
+
+        if (!forExport) currentTL = tl;
+        return tl;
+    }
+
+    /* ── 7. Status helper ──────────────────────────────────────── */
+    var statusMap = {
+        idle:    { cls: 's-idle', dot: 'bg-zinc-500',  lbl: 'Pronto'         },
+        playing: { cls: 's-playing', dot: 'bg-amber-400', lbl: 'Animando\u2026' },
+        exp:     { cls: 's-exp', dot: 'bg-violet-400', lbl: 'Capturando\u2026' },
+        zip:     { cls: 's-zip', dot: 'bg-emerald-400', lbl: 'Gerando ZIP\u2026' },
+        done:    { cls: 's-done', dot: 'bg-emerald-400', lbl: 'Download OK!' }
+    };
+    function setStatus(key, label) {
+        var s = statusMap[key] || statusMap.idle;
+        sBadge.className       = 'sbadge ' + s.cls;
+        sDot.className         = 'w-1.5 h-1.5 rounded-full inline-block ' + s.dot;
+        sLabel.textContent     = label || s.lbl;
+    }
+
+    /* ── 8. Progress helpers ───────────────────────────────────── */
+    function updateProgress1(frame, total) {
+        var pct = total > 0 ? Math.min(100, Math.round((frame / total) * 100)) : 0;
+        pctFrames.textContent    = pct + '%';
+        barFrames.style.width    = pct + '%';
+        statusFrames.textContent = 'Frame ' + frame + ' de ' + total;
+        if (pct >= 100) phase1Icon.textContent = '\u2705'; // ✅
+    }
+
+    function updateProgress2(pct, detail) {
+        pctZip.textContent    = Math.round(pct) + '%';
+        barZip.style.width    = pct + '%';
+        statusZip.textContent = detail || '';
+        if (pct >= 100) phase2Icon.textContent = '\u2705';
+    }
+
+    /* ── 9. Timestamp filename helper ─────────────────────────── */
+    function zipFileName() {
+        var now = new Date();
+        var pad = function(n) { return String(n).padStart(2, '0'); };
+        var date = now.getFullYear() + '' + pad(now.getMonth()+1) + '' + pad(now.getDate());
+        var time = pad(now.getHours()) + '' + pad(now.getMinutes()) + '' + pad(now.getSeconds());
+        return 'story_frames_' + date + '_' + time + '.zip';
+    }
+
+    /* ── 10. Frame name helper (zero-padded 4 digits) ──────────── */
+    function frameName(i) {
+        return 'frame_' + String(i).padStart(4, '0') + '.png';
+    }
+
+    /* ── 11. Run preview animation ─────────────────────────────── */
+    function runAnimation() {
+        scalePreview();
+        var sc = buildScene();
+        if (!sc.badgeGroups.length) return;
+        var tl = buildTL(sc.badgeGroups, sc.letterNodes, false);
+        tl.play(0);
+    }
+
+    /* ── 12. PNG ZIP Export ────────────────────────────────────── */
+    var isExporting = false;
+
+    async function startExport() {
+        if (isExporting) return;
+        isExporting = true;
+        btnExport.disabled  = true;
+        btnPreview.disabled = true;
+
+        scalePreview();
+        var sc = buildScene();
+        if (!sc.badgeGroups.length) {
+            alert('Adicione ao menos um texto para exportar.');
+            isExporting = false;
+            btnExport.disabled = false;
+            btnPreview.disabled = false;
+            return;
+        }
+
+        // Build export timeline (no GSAP pause, linear seek)
+        var exportTL    = buildTL(sc.badgeGroups, sc.letterNodes, true);
+        var targetFps   = parseInt(selFps.value, 10) || 60;
+        var totalDur    = exportTL.duration();
+        var totalFrames = Math.ceil(totalDur * targetFps);
+        var frameStep   = 1 / targetFps;
+
+        // Native Konva canvas (no tainted canvas risk — all data is local)
+        var konvaCanvas = stage.getLayers()[0].getNativeCanvasElement();
+
+        // Reset overlay state
+        phase1Icon.textContent = '\u23f3'; // ⏳
+        phase2Icon.textContent = '\u23f3';
+        updateProgress1(0, totalFrames);
+        updateProgress2(0, 'Aguardando fase 1\u2026');
+        oTitle.textContent = 'Renderizando Frames PNG\u2026';
+        oSub.textContent   = 'N\u00e3o feche esta janela durante a exporta\u00e7\u00e3o';
+
+        setStatus('exp', 'Capturando\u2026');
+        expOverlay.style.display = 'flex';
+
+        var zip = new JSZip();
+
+        try {
+            /* ── FASE 1: Capture frames one by one ───────────────── */
+            for (var frame = 0; frame <= totalFrames; frame++) {
+                // Seek timeline to exact frame time
+                exportTL.seek(frame * frameStep);
+                layer.batchDraw();
+
+                // Extract PNG with alpha from Konva's native canvas
+                var dataUrl  = konvaCanvas.toDataURL('image/png');
+                // Strip the data URI prefix to get raw base64
+                var base64   = dataUrl.replace(/^data:image\/png;base64,/, '');
+
+                // Add to ZIP at root level with zero-padded name
+                zip.file(frameName(frame), base64, { base64: true });
+
+                updateProgress1(frame, totalFrames);
+
+                // Yield to browser every 6 frames so UI stays responsive
+                if (frame % 6 === 0) {
+                    await new Promise(function(r) { requestAnimationFrame(r); });
+                }
+            }
+
+            /* ── FASE 2: Compress and download ZIP ───────────────── */
+            setStatus('zip', 'Gerando ZIP\u2026');
+            oTitle.textContent = 'Comprimindo ZIP\u2026';
+            phase2Icon.textContent = '\u23f3';
+            updateProgress2(0, 'Inicializando compress\u00e3o\u2026');
+
+            var zipBlob = await zip.generateAsync(
+                {
+                    type:        'blob',
+                    compression: 'DEFLATE',
+                    compressionOptions: { level: 6 }
+                },
+                function(metadata) {
+                    // JSZip progress callback
+                    updateProgress2(metadata.percent, 'Comprimindo ' + Math.round(metadata.percent) + '% \u2014 ' + (metadata.currentFile || ''));
+                }
+            );
+
+            updateProgress2(100, 'Finalizando download\u2026');
+            oTitle.textContent = 'Baixando arquivo ZIP\u2026';
+
+            // Force browser download via FileSaver.js
+            saveAs(zipBlob, zipFileName());
+
+            setStatus('done', 'Download OK!');
+            oSub.textContent = 'Arquivo ZIP baixado com sucesso!';
+
+        } catch (err) {
+            console.error('Erro na exporta\u00e7\u00e3o PNG ZIP:', err);
+            alert('Erro durante a exporta\u00e7\u00e3o. Consulte o console (F12) para detalhes.\n\n' + err.message);
+            setStatus('idle', 'Pronto');
+        } finally {
+            setTimeout(function() {
+                expOverlay.style.display = 'none';
+                btnExport.disabled  = false;
+                btnPreview.disabled = false;
+                isExporting         = false;
+            }, 1800);
+        }
+    }
+
+    /* ── 13. Event listeners ───────────────────────────────────── */
+    pickBadge.addEventListener('input', function(e) { valBadge.textContent = e.target.value.toUpperCase(); });
+    pickText.addEventListener('input',  function(e) { valText.textContent  = e.target.value.toUpperCase(); });
+    sliderSize.addEventListener('input', function() {
+        labelSize.textContent = parseFloat(sliderSize.value).toFixed(1);
+    });
+
+    selRes.addEventListener('change', function() { scalePreview(); runAnimation(); });
+    selFont.addEventListener('change', runAnimation);
+
+    // Debounced live preview rebuild (400 ms)
+    var debT;
+    var liveInputs = inpLines.concat([inpDelay, pickBadge, pickText, sliderSize, selFont]);
+    liveInputs.forEach(function(el) {
+        el.addEventListener('input', function() {
+            clearTimeout(debT);
+            debT = setTimeout(runAnimation, 400);
+        });
+    });
+
+    inpLines.forEach(function(inp) {
+        inp.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') runAnimation();
+        });
+    });
+
+    btnPreview.addEventListener('click', runAnimation);
+    btnExport.addEventListener('click', startExport);
+
+    /* ── 14. Initial render after fonts load ───────────────────── */
+    document.fonts.ready.then(function() {
+        scalePreview();
+        runAnimation();
+    });
+
+}); // DOMContentLoaded
+</script>
+</body>
+</html>
